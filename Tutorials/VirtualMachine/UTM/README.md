@@ -1,4 +1,14 @@
 # Virtualization Tutorial
+
+-----
+
+Hello! These are some notes for the UTM version ( which took me *sometime* to setup following the Virtualbox tutorial :( ), feel free to ask for help or write me for corrections, hopefully this goes smooth! I'm following the template from the Virtualbox setup and will highlight only the major differences in setup  
+
+good luck...  
+Adriano D.
+
+-----
+
 In this tutorial, we will learn how to build a cluster of Linux machines on our local environment using Virtualbox. 
 Each machine will have two NICs one internal and one to connect to WAN .
 We will connect to them from our host windows machine via SSH.
@@ -6,7 +16,7 @@ We will connect to them from our host windows machine via SSH.
 This configuration is useful to try out a clustered application which requires multiple Linux machines like kubernetes or an HPC cluster on your local environment.
 The primary goal will be to test the guest virtual machine performances using standard benckmaks as HPL, STREAM or iozone and compare with the host performances.
 
-Then we will installa a slurm based cluster to test parallel applications
+Then we will install a slurm based cluster to test parallel applications
 
 ## GOALs
 In this tutorial, we are going to create a cluster of four Linux virtual machines.
@@ -19,41 +29,47 @@ In this tutorial, we are going to create a cluster of four Linux virtual machine
 
 ## Prerequisite
 
-* VirtualBOX installed in your linux/windows/Apple (UTM in Arm based Mac)
-* ubuntu server 22.04 LTS image to install
+* UTM installed in your linux/windows/Apple (UTM in Arm based Mac)
+* ubuntu server (I used ARM version) 22.04 LTS image to install
 * SSH client to connect
 
 ## Create virtual machines on Virtualbox
 We create one template that we will use then to deply the cluster and to make some performance tests and comparisons
 
-Create the template virtual machine which we will name "template" with 1vCPUs, 1GB of RAM and 25 GB hard disk. 
+(For the initial setup you can use more resources and then resize the template later so that the machine is more powerful and installation is faster)
+
+Create the template virtual machine which we will named "template" with (at least) 1vCPUs, 1GB of RAM and 25 GB hard disk. 
 
 You can use Ubuntu 22.04 LTS server (https://ubuntu.com/download/server)
 
-Make sure to set up the network as follows:
+### Network setup:
+Right click on your machine -> edit -> in Devices be sure there's a network (otherwise add it).
+Configure it like this
 
- * Attach the downloaded Ubuntu ISO to the "ISO Image".
- * Type: is Lunux
- * Version Ubuntu 22.04 LTS
-When you start the virtual machines for the first time you are prompted to instal and setup Ubuntu. 
-Follow through with the installation until you get to the “Network Commections”. As the VM network protocol is NAT,  the virtual machine will be assinged to an automatic IP (internal) and it will be able to access internet for software upgrades. 
+<img width="678" alt="Screenshot 2023-11-11 at 17 55 58" src="https://github.com/JunkyByte/Cloud-Basic-2023/assets/24314647/fc1f2ccf-b69a-41eb-9b18-878b3f6f2ad9">
 
-The VM is now accessing the network to download the software and updates for the LTS. 
+### Boot and install ubuntu
+
+The VM is now able to access the network to download the software and updates for the LTS. 
 
 When you are prompted for the "Guided storage configuration" panel keep the default installation method: use an entire disk. 
 
 When you are prompted for the Profile setup, you will be requested to define a server name (template) and super user (e.g. user01) and his administrative password.
 
+*Also, enable open ssh server in the software selection prompt.*
 
-Also, enable open ssh server in the software selection prompt.
+Finish the installation and then shutdown the VM.
 
-Follow the installation and then shutdown the VM.
+Remove the CD so that you are sure is booting correctly
 
-Inspect the VM and in particular the Network, you will  find only one adapter attached to NAT. If you look at the advanced tab you will find the Adapter Type (Intel) and the MAC address.
+<img width="595" alt="image" src="https://github.com/JunkyByte/Cloud-Basic-2023/assets/24314647/cc9983bd-68ba-4d32-ab82-6ba099d86dd1">
 
-Start the newly created machine and make sure it is running. 
+Boot again and check if internet works
+```
+ping google.com
+```
 
-Login and update the software:
+update the software:
 
 ```
 $ sudo apt update
@@ -61,9 +77,6 @@ $ sudo apt update
 
 $ sudo apt upgrade
 ```
-
-
-When your VM is all set up, log in to the VM and test the network by pinging any public site. e.g `ping google.com`. If all works well, this should be successful.
 
 You can check the DHCP-assigned IP address by entering the following command:
 
@@ -76,7 +89,7 @@ You will get an output similar to this:
 10.0.2.15
 ```
 
-This is the default IP address assigned by your network DHCP. Note that this IP address is dynamic and can change or worst still, get assigned to another machine. But for now, you can connect to this IP from your host machine via SSH.
+This is the default IP address assigned by your network DHCP. Note that this IP address is dynamic and can change or worst still, get assigned to another machine.
 
 Now install some useful additional packages:
 
@@ -84,43 +97,96 @@ Now install some useful additional packages:
 $ sudo apt install net-tools
 ```
 
-If everything is ok, we can proceed cloning this template. We will create 3 clones (you can create more than 3 
-according to the amount of RAM and cores available in your laptop).
-
-You must shutdown the node to clone it, using VirtualBox interface (select VM and right click) create 3 new VMs. 
-
-```
-$ sudo shutdown -h now
-```
-
-
-Right click on the name of the VM and clone it. The first clone will be the login/master node the other twos will be computing nodes.
-
-## Configure the cluster
-
-Once the 2 machines has been cloned we can bootstrap the login/master node and configure it.
-Add a new network adapter on each machine: enable "Adapter 2" "Attached to" internal network and name it "clustervimnet"
-
 ### Login/master node
 
-Bootstrap the VM and configure the secondary network adapter with a static IP. 
+You could create templates from here but I think you have to do a lot more work later so I will do a few more steps and create a template only when I'm almost done.
 
-In the example below the interface is enp0s8, to find your own one:
+I want to setup the static ip for this VM now but working from the machine is terrible, I like to ssh so let's setup that:
+
+### Port forwarding on login/master node
+
+Turn off the VM  
+Right click on it -> edit -> New (Network) and setup it like this  
+
+<img width="656" alt="image" src="https://github.com/JunkyByte/Cloud-Basic-2023/assets/24314647/b466bbc5-f2e6-48db-9ec4-0055a5e8b031">
+
+Now on the left side of the menu you will see the Port forwarding (under this network), click on it and setup it as follows (you just need to insert the ports! Do not change the ips)
+
+<img width="662" alt="image" src="https://github.com/JunkyByte/Cloud-Basic-2023/assets/24314647/11d89b53-8b23-41c0-9465-868f5d31e6ab">
+
+The second port (the host port) will be different on each other machine we will create, so remember that when you clone a new one you must come here and edit it as you cannot have the same on multiple machines. I suggest you to do incremenetally (22, 23 ...) with 22 being master and 23 ... the computing nodes we will create later.  
+(If 22 does not work just change it like to something like 2222, 2223 ...)
+
+Launch the VM  
+If everything is correct you should be able to ssh to it with
 
 ```
-$ ip link show
-1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
-    link/ether 08:00:27:2b:e5:36 brd ff:ff:ff:ff:ff:ff
-3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
-    link/ether 08:00:27:6e:cf:82 brd ff:ff:ff:ff:ff:ff
+ssh -p 22 your_vm_username@localhost
 ```
 
-You are interested to link 2 and 3. Link 2 is the NAT device, Link 3 is the internal network device.
-You are interested in Link 3.
+Does it work?  
 
-Now we configure the adapter. To do this we will edit the netplan file:
+You will have to enter the password at each login, let's change way using keys  
+If you want a passwordless access you need to generate a ssh key or use an ssh key if you already have it.
+
+If you don’t have public/private key pair already, run ssh-keygen and agree to all defaults. 
+This will create id_rsa (private key) and id_rsa.pub (public key) in ~/.ssh directory.  
+Check that that is the actual key created if you have already one in your system path might differ.
+
+Copy host public key to your VM:
+
+```
+scp -P 22 ~/.ssh/id_rsa.pub your_vm_username@localhost:~
+```
+
+Connect to the VM and add host public key to ~/.ssh/authorized_keys:
+
+```
+ssh -p 22 your_vm_username@localhost
+mkdir ~/.ssh
+chmod 700 ~/.ssh
+cat ~/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 644 ~/.ssh/authorized_keys
+exit
+```
+
+Now you should be able to ssh to the VM without password.  
+If it does not work and keeps asking your password do some googling (for instance disable password authentication on `sshd_config`)
+
+If your ssh works correctly and you do not want to use graphical interface anymore for the VM (which is the cool pro move) go Edit -> Select the Display device in devices and remove it.
+Now when you boot the VM there's no graphical interface at all and you can only connect to it through ssh. (Now you are a pro)
+
+### Static IPs
+
+Let's go back setting a static IP for the VM.
+
+First find interface name (might be same as me `enp0s2`)
+
+```
+$ ifconfig
+enp0s1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 10.0.2.15  netmask 255.255.255.0  broadcast 10.0.2.255
+        inet6 fec0::a496:c2ff:fe54:8c00  prefixlen 64  scopeid 0x40<site>
+        inet6 fe80::a496:c2ff:fe54:8c00  prefixlen 64  scopeid 0x20<link>
+        ether a6:96:c2:54:8c:00  txqueuelen 1000  (Ethernet)
+        RX packets 165  bytes 19454 (19.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 159  bytes 21513 (21.5 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+enp0s2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.64.0  netmask 255.255.255.0  broadcast 192.168.64.255
+        inet6 fe80::c420:e4ff:fed9:31bd  prefixlen 64  scopeid 0x20<link>
+        inet6 fd30:2e54:53c8:27c5:c420:e4ff:fed9:31bd  prefixlen 64  scopeid 0x0<global>
+        ether c6:20:e4:d9:31:bd  txqueuelen 1000  (Ethernet)
+        RX packets 11  bytes 3930 (3.9 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 26  bytes 1734 (1.7 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+```
+
+Now we configure the adapter. To do this we will edit the netplan file:  
+(Use nano if you are not a vim fan)
 
 ```
 $ sudo vim /etc/netplan/00-installer-config.yaml
@@ -130,24 +196,36 @@ network:
   ethernets:
     enp0s1:
       dhcp4: true
-    enp0s8:
-     dhcp4: no
-     addresses: [192.168.0.1/24]
+    enp0s2:
+      dhcp4: no
+      addresses: [192.168.64.0/24]
   version: 2
 ```
 
-and apply the configuration
+Using `192.168.0.1` (as the professor does) *DID NOT* work at all to me.  
+I opted to use `192.168.64.0` for master node and then `192.168.64.[1,2,...]` for the compute nodes.
+
+save and apply the configuration
 
 ```
 $ sudo netplan apply
 ```
-We change the hostname:
+
+Change the hostname:
 ```
 $ sudo vim /etc/hostname
 
 cluster01
 ```
 
+Now reboot the VM and check if the static IP is correctly assigned!
+```
+$ hostname -I
+10.0.2.15 192.168.64.0 fec0::a496:c2ff:fe54:8c00 fd30:2e54:53c8:27c5:c420:e4ff:fed9:31bd
+```
+
+If it does good job!
+Now let's setup the hosts file.
 
 Edit the hosts file to assign names to the cluster that should include names for each node as follows:
 
@@ -155,16 +233,13 @@ Edit the hosts file to assign names to the cluster that should include names for
 $ sudo vim /etc/hosts
 
 127.0.0.1 localhost
-192.168.0.1 cluster01
+192.168.64.0 cluster01
 
-192.168.0.22 cluster02
-192.168.0.23 cluster03
-192.168.0.24 cluster04
-192.168.0.25 cluster05
-192.168.0.26 cluster06
-192.168.0.27 cluster07
-192.168.0.28 cluster08
-
+192.168.64.1 cluster02
+192.168.64.2 cluster03
+192.168.64.3 cluster04
+192.168.64.4 cluster05
+192.168.64.5 cluster06
 
 # The following lines are desirable for IPv6 capable hosts
 ::1     ip6-localhost ip6-loopback
@@ -172,9 +247,7 @@ fe00::0 ip6-localnet
 ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
-
 ```
-
 
 Then we install a DNSMASQ server to dynamically assign the IP and hostname to the other nodes on the internal interface and create a cluster [1].
 
@@ -184,19 +257,21 @@ Removed /etc/systemd/system/multi-user.target.wants/systemd-resolved.service.
 Removed /etc/systemd/system/dbus-org.freedesktop.resolve1.service.
 $ sudo systemctl stop systemd-resolved
 ```
+
 Then 
 
 ```
 $ ls -lh /etc/resolv.conf
 lrwxrwxrwx 1 root root 39 Jul 26 2018 /etc/resolv.conf ../run/systemd/resolve/stub-resolv.conf
 $ sudo unlink /etc/resolv.conf
-```
-Create a new resolv.conf file and add public DNS servers you wish. In my case am going to use google DNS. 
 
 ```
-$ echo nameserver 8.8.8.8 | sudo tee /etc/resolv.conf
-```
 
+Create a new resolv.conf file like this
+
+```
+$ echo nameserver 192.168.64.0 | sudo tee /etc/resolv.conf
+```
 
 Install dnsmasq
 
@@ -213,12 +288,12 @@ port=53
 bogus-priv
 strict-order
 expand-hosts
-dhcp-range=192.168.0.22,192.168.0.28,255.255.255.0,12h
-dhcp-option=option:dns-server,192.168.0.1
+dhcp-range=192.168.64.1,192.168.64.8,255.255.255.0,12h
+server=8.8.8.8
+# dhcp-option=option:dns-server,192.168.64.0
 dhcp-option=3
 
 ```
-
 
 When done with editing the file, close it and restart Dnsmasq to apply the changes. 
 ```
@@ -229,62 +304,23 @@ Check if it is working
 
 ```
 $ host cluster01
-
+cluster01 has address 192.168.64.0
 ```
 
-Shutdown  the VM.
+If it does, good job!  
+(This part took me probably 2 hours alone and might be wrong, we are not using google DNS but it works, whatever).
 
-### Port forwarding on login/master node
-To enable ssh from host to guest VM you need to create a port forwarding rule in VirtualBox. 
-To do this open 
-```
-VM settings -> Network -> Advanced -> Port Forwarding 
-```
+Now shutdown the machine and do a clone (I suggest you do 2 and one you call it "template common" just to be sure if you make mistakes later), now we will have differences in setup for master and compute nodes.  
+You should have 3 machines, the one you worked up to now called cluster01 and two others, one is a "template common" and the last one will be used for compute nodes.  
 
-and create a forwarding rule from host to the VM: 
-* Name --> ssh 
-* Protocol --> TCP
-* HostIP --> 127.0.0.1
-* Host Port --> 2222
-* Guest Port --> 22
-
-Now you should be able to ssh to your VM. Startup the VM, then
-
-```
-ssh -p 2222 yury@127.0.0.1
-```
-
-but you will have to enter the password. 
-If you want a passwordless access you need to generate a ssh key or use an ssh key if you already have it.
-
-If you don’t have public/private key pair already, run ssh-keygen and agree to all defaults. 
-This will create id_rsa (private key) and id_rsa.pub (public key) in ~/.ssh directory.
-
-Copy host public key to your VM:
-
-```
-scp -P 2222 ~/.ssh/id_rsa.pub user01@127.0.0.1:~
-```
-
-Connect to the VM and add host public key to ~/.ssh/authorized_keys:
-
-```
-ssh -p 2222 user01@127.0.0.1
-mkdir ~/.ssh
-chmod 700 ~/.ssh
-cat ~/id_rsa.pub >> ~/.ssh/authorized_keys
-chmod 644 ~/.ssh/authorized_keys
-exit
-```
-
-Now you should be able to ssh to the VM without password.
-
-To build a cluster we aldo need a distributed filesystem accessible from all nodes. 
+Let's continue a bit with cluster01 setup, turn it on again...  
+To build a cluster we also need a distributed filesystem accessible from all nodes. 
 We use NFS.
 
 ```
 $ sudo apt install nfs-kernel-server
 $ sudo mkdir /shared
+$ sudo chown -R your_vm_username /shared
 $ sudo chmod 777 /shared
 ```
 
@@ -293,9 +329,9 @@ Modify the NFS config file:
 ```
 $ sudo vim /etc/exports
 
-/shared/  192.168.0.0/255.255.255.0(rw,sync,no_root_squash,no_subtree_check)
-
+/shared 192.168.64.0/24(rw,sync,root_squash,subtree_check)
 ```
+
 Restart the server
 
 ```
@@ -303,10 +339,18 @@ $ sudo systemctl enable nfs-kernel-server
 $ sudo systemctl restart nfs-kernel-server
 ```
 
-### Computing nodes
-Bootstrap the VM  cluster01 and configure the secondary network adapter with a dynamic IP (this should be standard configuration and nothing should me modified, anyway please check with the "ip link show" command to check the name of the adapters). 
+Shut it down again. Now let's setup the computing nodes for a bit.  
+Just to be sure assign different MAC addresses to the network devices of your new machines everytime you clone them (in this case apply this to the computing node we are about to start), to do so Edit -> On each network device -> MAC Address -> Random
 
-To do this we will edit the netplan file:
+Let's setup your first computing node. Remember I told you you have to change the port for ssh connection otherwise you won't be able to connect to it while cluster01 is on. To do so on the compute node -> Edit -> Port Forwarding and update the port (I explained above the meaning).
+
+Now you can connect to this machine using `ssh -p 23 your_vm_username@localhost` (notice is 23 or whatever port you put)
+
+### Computing nodes
+
+*This must be done every time you will create a new computing node (after you create a template for computing nodes you will just have to change the ip related stuff and update the hostname in both hostname and hosts files)*
+
+Setup the netplan file with new static ip for this machine (this is first compute node so I will use `192.168.64.1`...
 
 ```
 $ sudo vim /etc/netplan/00-installer-config.yaml
@@ -314,12 +358,11 @@ $ sudo vim /etc/netplan/00-installer-config.yaml
 # This is the network config written by 'subiquity'
 network:
   ethernets:
-    enp0s3:
+    enp0s1:
       dhcp4: true
-      dhcp4-overrides:
-        use-dns: no
-    enp0s8:
-     dhcp4: true
+    enp0s2:
+      dhcp4: false
+      addresses: [192.168.64.1/24]
   version: 2
 ```
 
@@ -328,11 +371,12 @@ and apply the configuration
 ```
 $ sudo netplan apply
 ```
-We change the hostname to empty:
+
+Change the hostname to a new index to remember each machine:
 ```
 $ sudo vim /etc/hostname
 
-
+cluster02
 ```
 
 Set the proper dns server (assigned with dhcp):
@@ -347,39 +391,65 @@ then
 $ sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 ```
 
+Setup hosts file to a better version for each computing node
+
+```
+$ sudo vim /etc/hosts
+
+127.0.0.1 localhost
+127.0.1.1 cluster02
+
+192.168.64.0 cluster01
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+```
+
 Reboot the machine.
-At reboot you will see that the machine will have a new ip address 
+
+At reboot you will see that the machine will have a the static ip address (does it?)
 
 ```
 $ hostname -I
-10.0.2.15 192.168.0.23 
+10.0.2.15 192.168.64.1 fec0::fc5a:9fff:fee3:77e fd30:2e54:53c8:27c5:d058:bfff:fe9f:d05
 ```
+
 Install dnsmasq (trick necessary to install the cluster later)
 ```
 $ sudo apt install dnsmasq -y
 $ sudo systemctl disable dnsmasq
 ```
 
-Now, from the cluster01 you will be able to connect to cluster02 machine with ssh.
+Now you should we able to connect *from cluster01 to cluster02 (both must be on).*
 
 ```
-$ ssh user01@cluster03
-user01@cluster02:~$
-
+$ ssh your_vm_username@cluster02
+your_vm_username@cluster02:~$
+(Be careful to be on the right machine to issue future commands)
+(As you have same username you can also just do ssh cluster02)
 ```
-To access the new machine without password you can proceed described above. Run ssh-keygen and agree to all defaults. 
+
+To access the new machine without password you can proceed like described above.  
+
+*The following must be done on cluster01*
+
+Run ssh-keygen and agree to all defaults. 
 This will create id_rsa (private key) and id_rsa.pub (public key) in ~/.ssh directory.
 
 Copy host public key to your VM:
 
 ```
-scp  ~/.ssh/id_rsa.pub user01@cluster03:~
+scp  ~/.ssh/id_rsa.pub your_vm_username@cluster02:~
 ```
 
 Connect to the VM and add host public key to ~/.ssh/authorized_keys:
 
 ```
-ssh user01@cluster03
+ssh your_vm_username@cluster02
 mkdir ~/.ssh
 chmod 700 ~/.ssh
 cat ~/id_rsa.pub >> ~/.ssh/authorized_keys
@@ -387,6 +457,10 @@ chmod 644 ~/.ssh/authorized_keys
 exit
 ```
 
+* Done, now you should be able to connect from cluster01 to cluster02 without password! *  
+(Test it)
+
+Now back to compute node configuration...  
 Configure the shared filesystem
 
 ```
@@ -394,9 +468,10 @@ $ sudo apt install nfs-common
 $ sudo mkdir /shared
 ```
 
-Mount the shared directory adn test it
+Mount the shared directory and test it
+
 ```
-$ sudo mount 192.168.0.1:/shared  /shared
+$ sudo mount -t nfs 192.168.64.0:/shared /shared
 $ touch /shared/pippo
 ```
 If everything will be ok you will see the "pippo" file in all the nodes.
@@ -411,13 +486,14 @@ $ sudo vim /etc/fstab
 Append the following line at the end of the file
 
 ```
-192.168.0.1:/shared               /shared      nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0
+192.168.64.0:/shared /shared nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0
 ``` 
-
-
 
 ## Install a SLURM based cluster
 Here I will describe a simple configuration of the slurm management tool for launching jobs in a really simplistic Virtual cluster. I will assume the following configuration: a main node (cluster01) and 3 compute nodes (cluster03 ... VMs). I also assume there is ping access between the nodes and some sort of mechanism for you to know the IP of each node at all times (most basic should be a local NAT with static IPs)
+
+^^^ Do we have a ping system working?  
+On cluster 01 try to run `ping cluster02` it should work! :)
 
 Slurm management tool work on a set of nodes, one of which is considered the master node, and has the slurmctld daemon running; all other compute nodes have the slurmd daemon. 
 
@@ -431,6 +507,8 @@ All communications are authenticated via the munge service and all nodes need to
  * Manipulate the state of the nodes, and learn to resume them if they are down
  * Run some simple jobs as test
  * Set up MPI task on the cluster
+
+* On both machines (cluster01 and cluster02 follow these instructions) *
 
 ### Install gcc and OpenMPI
 
@@ -462,41 +540,69 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 ### Install MUNGE
 
-Lets start installing munge authentication tool using the system package manager, for cluster01 and cluster03:
+Lets start installing munge authentication tool using the system package manager:
 
 ```
 $ sudo apt-get install -y libmunge-dev libmunge2 munge
 ```
 
-munge requires that we generate a key file for testing authentication, for this we use the dd utility, with the fast pseudo-random device /dev/urandom. At cluster01 node do:
+munge requires that we generate a key file for testing authentication, for this we use the dd utility, with the fast pseudo-random device /dev/urandom.  
+* cluster01 node do: *  
 ```
-$ sudo dd if=/dev/urandom bs=1 count=1024 > /etc/munge/munge.key
-$ chown munge:munge /etc/munge/munge.key
-$ chmod 400 /etc/munge/munge.key
+$ sudo dd if=/dev/urandom bs=1 count=1024 | sudo tee /etc/munge/munge.key > /dev/null
+$ sudo chown munge:munge /etc/munge/munge.key
+$ sudo chown -R munge:munge /var/lib/munge
+$ sudo chown munge:munge /var/log/munge
+$ sudo chown munge:munge /etc/munge
+$ sudo chown munge:munge /var/log/munge/munged.log
+$ sudo chmod 400 /etc/munge/munge.key
+$ sudo chmod 700 /etc/munge
 ```
 
-Copy the key on cluster03 with scp and chech also on cluster03 the file permissions and user.
+Copy the key on cluster02 with scp (if `/etc/munge/` is too protected you won't be able to scp directly, scp it to `/home/your_vm_username` first and the from cluster02 use `sudo mv` to move the key to the correct folder).  
 
+* On cluster02 *
+
+I had to also be sure UID and GID are the same for munge user in different machines, to do so in cluster01 run
 ```
-scp /etc/munge/munge.key user01@cluster03:/etc/munge/munge.key
+$ grep munge /etc/passwd /etc/group
+/etc/passwd:munge:x:117:121::/nonexistent:/usr/sbin/nologin
+/etc/group:munge:x:121:
 ```
-Test communication with, locally and remotely with these commands respectively:
+The first number `117` here is the UID while `121` here is GID.  
+We want same UID and GID for munge also on cluster02.  
+On cluster 02 run:
+```
+sudo vim /etc/passwd
+sudo vim /etc/groupd
+```
+And change the numbers associated with munge to your numbers (`117` and `121` as above).  
+
+Now that the key is in correct path run all commands above (the ones about `chown` and `chmod` of munge directories, *do not run the `dd one`*)
+
+I would reboot all machines.
+
+Now you can test communication, on both machines try to run the following two commands, you should see success statuses.
 
 ```
 $ munge -n | unmunge
 $ munge -n | ssh cluster03 unmunge
 ```
+
+Trouble? This part was terrible for me. If you encounter problems with munge you can check if munge encountered errors with `journalctl -xe | grep munge` and the service status with `sudo systemctl status munge`, try to fix the errors it complains about.
+
 ### Install Slurm
 
 ```
-$ sudo apt-get install -y slurmd slurmctld
+$ sudo apt-get install -y slurmd
 ```
 
-Copy the slurm configuration file of GIT repository to '/etc/slurm' directory of in cluster01 and cluster03
+Copy the slurm configuration file of GIT repository (the one in UTM folder) to '/etc/slurm/slurm.conf' directory of in cluster01 and cluster02.
 
 On cluster01
 
 ```
+$ sudo apt install -y slurmctld
 $ sudo systemctl enable slurmctld
 $ sudo systemctl start slurmctld
 
@@ -504,44 +610,71 @@ $ sudo systemctl enable slurmd
 $ sudo systemctl start slurmd
 ```
 
-On cluster03
-```
-$ sudo systemctl disable slurmctld
-$ sudo systemctl stop slurmctld
+On cluster02
 
+```
 $ sudo systemctl enable slurmd
 $ sudo systemctl start slurmd
 ```
 
-Now you can test the envoroment:
+Now you can test the environment:
 
 ```
 $ sinfo
 PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-debug*       up   infinite      1   idle cluster03
-debug*       up   infinite      2   unk* cluster[04-05]
+debug*       up   infinite      2   idle cluster[02-03]
 ```
+
+(This is my correct state but also cluster03 does not exist yet in your setup)
+Probably it will not work or report some errors in the STATE :)
+
+On cluster02 run:
+```
+$ sinfo -N -r  -l
+NODELIST   NODES PARTITION       STATE CPUS    S:C:T MEMORY TMP_DISK WEIGHT AVAIL_FE REASON
+cluster02      1    debug*        idle 1       1:1:1   1464        0      1   (null) none
+cluster03      1    debug*        idle 1       1:1:1   1464        0      1   (null) none
+```
+
+You see there's a certain amount of memory and number of cpus! We must reflect them in the `slurm.conf`. On both machine do
+
+```
+sudo vim /etc/slurm/slurm.conf
+
+(Find the lines with nodes description) and update Real memory and CPUs with correct numbers:
+NodeName=cluster02 NodeAddr=192.168.64.1 CPUs=1 RealMemory=1464
+```
+
+Now the setup should be okay but still it might not work, let's reset the state of our machines. 
+From cluster01 run
+
+```
+sudo scontrol reconfigure cluster02
+sudo scontrol update nodename=cluster02 state=resume
+```
+
+If it does not work try to also reboot both machines and rerun ^ commands on cluster01
 
 Test a job:
 
 ```
 $ srun hostname
-cluste03
+cluster02
 ```
 
-### Clone the node
+Yay! Shut down cluster02. Create a clone of it and call it templatecomputenode, now create another clone for cluster03 :) As above change the hosts, hostname and netplan to another ip.  
 
-Shutdown cluster03 and clone it to cluster04 and then start the two VMs.
-
-Afther startup you sould find
+Turn all machines on. Now running sinfo should give you
 
 ```
 $ sinfo
 PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-debug*       up   infinite      2   idle cluster[03-04]
-debug*       up   infinite      1   unk* cluster05
+debug*       up   infinite      2   idle cluster[02-03]
 ```
 
+the rest of the tutorial has not been checked and is from the original tutorial of the professor.
+
+Have fun :)
 
 ## Testing VMM enviroment
 
@@ -553,7 +686,6 @@ We propose 3 different tests to study VMs performances and VMM capabilities.
 * Using iozone compare host IO performance with guest IO performance
 
 For windows based system it may be necessary to install Linux subsystem.
-
 
 
 Install and use hpcc:
