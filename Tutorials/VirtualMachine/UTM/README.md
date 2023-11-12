@@ -792,38 +792,3 @@ $ make install
 [6] HPC Challege https://hpcchallenge.org/hpcc/
 
 [7] IO Zone Benchmarks https://www.iozone.org/
-
-
-
-
-Do not use 192.168.0.1
-All different static ips for master and nodes
-Hosts in master that point to all nodes
-In nodes just hosts with master
-
-Use journal to read slurm / munge status
-
-Must own all damn munge stuff
-Must have same pid/gid on munge user between different 
-
-```
-sudo chown munge:munge /var/log/munge
-sudo chown munge:munge /etc/munge
-sudo chmod 700 /etc/munge
-sudo chown munge:munge /etc/munge/munge.key
-sudo chmod 400 /etc/munge/munge.key
-sudo chown -R munge:munge /var/lib/munge
-sudo chown munge:munge /var/log/munge/munged.log
-```
-
-```
-sudo scontrol reconfigure cluster02
-sudo scontrol reconfigure cluster03
-sudo scontrol update nodename=cluster02 state=resume
-sudo scontrol update nodename=cluster03 state=resume
-```
-
-```
-sudo systemctl restart slurmctld
-sudo systemctl restart slurmd
-```
