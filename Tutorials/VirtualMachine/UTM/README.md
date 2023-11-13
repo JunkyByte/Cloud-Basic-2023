@@ -466,6 +466,7 @@ Configure the shared filesystem
 ```
 $ sudo apt install nfs-common
 $ sudo mkdir /shared
+$ sudo chmod 777 /shared
 ```
 
 Mount the shared directory and test it
