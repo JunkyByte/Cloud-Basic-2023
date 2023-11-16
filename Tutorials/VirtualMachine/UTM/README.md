@@ -163,26 +163,13 @@ Let's go back setting a static IP for the VM.
 First find interface name (might be same as me `enp0s2`)
 
 ```
-$ ifconfig
-enp0s1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        inet 10.0.2.15  netmask 255.255.255.0  broadcast 10.0.2.255
-        inet6 fec0::a496:c2ff:fe54:8c00  prefixlen 64  scopeid 0x40<site>
-        inet6 fe80::a496:c2ff:fe54:8c00  prefixlen 64  scopeid 0x20<link>
-        ether a6:96:c2:54:8c:00  txqueuelen 1000  (Ethernet)
-        RX packets 165  bytes 19454 (19.4 KB)
-        RX errors 0  dropped 0  overruns 0  frame 0
-        TX packets 159  bytes 21513 (21.5 KB)
-        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
-
-enp0s2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        inet 192.168.64.0  netmask 255.255.255.0  broadcast 192.168.64.255
-        inet6 fe80::c420:e4ff:fed9:31bd  prefixlen 64  scopeid 0x20<link>
-        inet6 fd30:2e54:53c8:27c5:c420:e4ff:fed9:31bd  prefixlen 64  scopeid 0x0<global>
-        ether c6:20:e4:d9:31:bd  txqueuelen 1000  (Ethernet)
-        RX packets 11  bytes 3930 (3.9 KB)
-        RX errors 0  dropped 0  overruns 0  frame 0
-        TX packets 26  bytes 1734 (1.7 KB)
-        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+$ ip link show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: enp0s1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
+    link/ether a6:96:c2:54:8c:00 brd ff:ff:ff:ff:ff:ff
+3: enp0s2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
+    link/ether c6:20:e4:d9:31:bd brd ff:ff:ff:ff:ff:ff
 ```
 
 Now we configure the adapter. To do this we will edit the netplan file:  
